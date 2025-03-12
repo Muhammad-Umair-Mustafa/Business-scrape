@@ -1,42 +1,56 @@
-import requests
-from bs4 import BeautifulSoup
+import time
 from flask import Flask, jsonify
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
 
 app = Flask(__name__)
 
-BASE_URL = "https://www.yellowpages.com/search?search_terms=restaurants&geo_location_terms=New+York%2C+NY"
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.5",
-    "Referer": "https://www.yellowpages.com/",
-    "Connection": "keep-alive",
-    "Upgrade-Insecure-Requests": "1",
-}
-
-def scrape_businesses(url):
+def scrape_google_maps(query):
     try:
-        response = requests.get(url, headers=HEADERS, timeout=10)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
-        businesses = soup.find_all("div", class_="info")
+        # Configure headless Chrome options
+        options = Options()
+        options.add_argument("--headless")  # Run without opening a browser window
+        options.add_argument("--no-sandbox")  # Required for some hosting environments
+        options.add_argument("--disable-dev-shm-usage")  # Avoids issues in containerized environments
+
+        # Initialize the Chrome driver (assumes chromedriver is in PATH)
+        driver = webdriver.Chrome(options=options)
+
+        # Navigate to Google Maps with the search query
+        driver.get(f"https://www.google.com/maps/search/{query}")
+
+        # Wait for the page to load (adjust time as needed)
+        time.sleep(5)
+
+        # Find business listings (update selectors based on actual HTML)
+        businesses = driver.find_elements(By.CLASS_NAME, "section-result")
 
         business_data = []
         for business in businesses:
-            name = business.find("a", class_="business-name")
-            name = name.text.strip() if name else "N/A"
-            address = business.find("div", class_="street-address")
-            address = address.text.strip() if address else "N/A"
-            phone = business.find("div", class_="phones")
-            phone = phone.text.strip() if phone else "N/A"
-            business_data.append({"name": name, "address": address, "phone": phone})
-        return business_data if business_data else {"message": "No data found, but request succeeded"}
+            try:
+                name = business.find_element(By.CLASS_NAME, "section-result-title").text.strip()
+            except:
+                name = "N/A"
+            try:
+                address = business.find_element(By.CLASS_NAME, "section-result-location").text.strip()
+            except:
+                address = "N/A"
+            business_data.append({"name": name, "address": address})
+
+        # Clean up
+        driver.quit()
+
+        # Return data or a message if no data is found
+        return business_data if business_data else {"message": "No businesses found"}
     except Exception as e:
         return {"error": str(e)}
 
 @app.route('/')
 def home():
-    data = scrape_businesses(BASE_URL)
+    # Example query; modify as needed
+    query = "restaurants in New York"
+    data = scrape_google_maps(query)
     return jsonify(data)
 
 if __name__ == "__main__":
