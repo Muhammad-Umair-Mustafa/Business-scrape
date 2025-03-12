@@ -8,7 +8,7 @@ import re  # For email extraction (if you want to try to scrape emails from busi
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def scrape_Google Maps_no_api_key(query, location=""):
+def scrape_Google Maps_no_apikey(query, location=""): # Corrected function name - underscores instead of spaces
     """
     Attempts to scrape Google Maps business data without using an API key.
     This is unreliable and may break. Use with caution and respect Google's terms of service.
@@ -86,7 +86,7 @@ def api_scrape_businesses_no_api_key():
         return jsonify({"error": "Missing 'query' parameter. Please provide a search term (e.g., 'restaurants')."}), 400
 
     logging.info(f"Endpoint '/scrape-businesses-no-api-key' called with query='{query}', location='{location}'")
-    businesses_data = scrape_Google Maps_no_api_key(query, location)
+    businesses_data = scrape_Google Maps_no_apikey(query, location) # Corrected function call to match new name
 
     return jsonify({
         "query": query,
